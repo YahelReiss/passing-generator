@@ -1,0 +1,33 @@
+# This environment is the official env for Siteswap developers.
+# It includes required packages for Siteswap developers such as pytest, pylint, black, mkdocs, flask, etc...
+name: siteswap_dev
+dependencies:
+  # Official packages
+  - python==3.11
+  - loguru
+  - pydantic>=2
+  - pyyaml>=6.0.1,<7
+  - pip
+  - colorama
+
+  # Tests and Dev
+  - pytest
+  - pytest-xdist
+  - pytest-mock
+  - pytest-timeout
+  - mkdocs
+  - black
+  - pylint
+  - mypy
+  - pre-commit
+  - ipython
+
+  # Web Development
+  - flask
+  - flask-cors
+
+  # Optional HTTP Tools
+  - httpx
+
+  # Typing Enhancements
+  - types-PyYAML

@@ -224,7 +224,12 @@ def is_prime_siteswap(pattern: list[int]) -> bool | None:
 
 
 def decompose_siteswap_recursive(
-    pattern: list[int], res: list[tuple[int, ...]], entry: list[int] | None = None
+    pattern: list[int],
+    current_state: list[str],
+    res: list[tuple[int, ...]],
+    is_seen: bool = False,
+    seen_states: dict[tuple[str, ...], int] | None = None,
+    pattern_prefix_pre_cycle: list[int] | None = None,
 ) -> None:
     """
     Recursively decompose a siteswap pattern into smaller subpatterns.
@@ -236,29 +241,32 @@ def decompose_siteswap_recursive(
         pattern (list[int]): A list representing the throws in a siteswap pattern.
         res (list[tuple[int]]): The list to accumulate the decomposed subpatterns.
     """
-    state = compute_initial_state_of_pattern(pattern)
-    assert state is not None
-    seen_states = set()
+    if seen_states is None:
+        seen_states = {}
+    if pattern_prefix_pre_cycle is None:
+        pattern_prefix_pre_cycle = []
 
-    if entry:
-        for index, throw in enumerate(entry):
-            state_tuple = tuple(state)
-            state = shift_state(state, throw)
-
-    for index, throw in enumerate(pattern):
-        state_tuple = tuple(state)
+    for local_index, throw in enumerate(pattern):
+        current_state = shift_state(current_state, throw)
+        state_tuple = tuple(current_state)
         if state_tuple in seen_states:
-            res.append(tuple(pattern[:index]))
-            decompose_siteswap_recursive(pattern[index:], res, entry)
+            seen_states = {state_tuple: seen_states[state_tuple]}
+            start_index = seen_states[state_tuple] + 1 if not is_seen else 0
+            res.append(tuple(pattern[start_index:local_index+1]))
+            if not pattern_prefix_pre_cycle:
+                pattern_prefix_pre_cycle = pattern[:start_index]
+            decompose_siteswap_recursive(pattern[local_index + 1:], current_state, res, True, seen_states, pattern_prefix_pre_cycle)
             return
+        if not is_seen:
+            seen_states[state_tuple] = local_index
 
-        seen_states.add(state_tuple)
-        state = shift_state(state, throw)
-
-    res.append(tuple(pattern))  # If no repeats, add the entire pattern
+    res.append(tuple(pattern + pattern_prefix_pre_cycle))  # If no repeats, add the rest of the pattern
 
 
-def decompose_siteswap(pattern: list[int], entry: list[int] | None = None) -> list[str]:
+def decompose_siteswap(
+    pattern: list[int],
+    entry: list[int] | None = None,
+) -> list[str]:
     """
     Decompose a siteswap pattern into its repeating subpatterns and their counts.
 
@@ -271,8 +279,14 @@ def decompose_siteswap(pattern: list[int], entry: list[int] | None = None) -> li
     Returns:
         list[str]: A list of strings representing the decomposed patterns with their counts.
     """
+    state = compute_initial_state_of_pattern(pattern)
+    assert state is not None
+    if entry:
+        for throw in entry:
+            state = shift_state(state, throw)
+
     res = []
-    decompose_siteswap_recursive(pattern, res, entry)
+    decompose_siteswap_recursive(pattern, state, res)
 
     # Count repetitions of patterns
     counter = Counter(res)
@@ -316,9 +330,9 @@ def decompose_siteswap(pattern: list[int], entry: list[int] | None = None) -> li
 # print(decompose_siteswap([5, 3, 1]))
 # print(decompose_siteswap([3, 5, 3, 1, 4, 2, 3, 5, 3, 1]))
 # print(is_valid([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
-# print(decompose_siteswap([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
+print(decompose_siteswap([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
 
-# print(decompose_siteswap([9, 4, 5, 8, 4], [7]))
+print(decompose_siteswap([9, 4, 5, 8, 4], [7]))
 
 # print(find_excited_entry([7,8,8,9,0,1,2]))
 # print(decompose_siteswap([7,8,9,5,6]))
@@ -334,5 +348,10 @@ def decompose_siteswap(pattern: list[int], entry: list[int] | None = None) -> li
 #         print(i, num_of_siteswaps, num_of_siteswaps - last_num)
 #         last_num = num_of_siteswaps
 
-a = find_transition([5, 3, 1], [4, 4, 1])
-print(a)
+# a = find_transition([5, 3, 1], [4, 4, 1])
+# print(a)
+# print(find_excited_entry([11,6,1]))
+
+print(decompose_siteswap([8, 9, 5, 6]))
+
+print(decompose_siteswap([8, 9, 5,9,5,9,5, 6]))

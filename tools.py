@@ -3,21 +3,26 @@ from collections import Counter
 from exceptions import ExcitedSiteswapError, NotValidSiteswapError
 
 
-def is_valid(pattern: list[int]) -> bool:
+def is_valid(pattern: list[int] | tuple[int,...], num_of_object: int | None = None) -> bool:
     """
     Check if a pattern is valid based on collision and object count.
 
     Args:
-        pattern (list[int]): The pattern to validate.
+        pattern (list[int] | tuple[int,...]): The pattern to validate.
 
     Returns:
         bool: `True` if the pattern is valid, `False` otherwise.
     """
+    period = len(pattern)
+
     # Check if the number of objects (balls) is an integer
-    if sum(pattern) / len(pattern) != int(sum(pattern) / len(pattern)):
+    if sum(pattern) / period != int(sum(pattern) / period):
         return False
 
-    period = len(pattern)
+    if num_of_object and sum(pattern) / period != num_of_object:
+        return False
+
+    
     landing = [False] * period  # Tracks where throws land
 
     for index, throw in enumerate(pattern):
@@ -96,6 +101,23 @@ def shift_state(state: list[str], throw: int) -> list[str]:
             )
 
     return new_state
+
+
+def calculate_pattern_orbit(pattern: list[int]) -> list[tuple[int]]:
+    assert is_valid(pattern)
+    indices = set()
+    res = []
+    for i, throw in enumerate(pattern):
+        if i in indices:
+            continue
+        next_index = (i + throw) % len(pattern)
+        curr_orbit_indices = [i]
+        while next_index != i:
+            indices.add(next_index)
+            curr_orbit_indices.append(next_index)
+            next_index = (next_index + pattern[next_index]) % len(pattern)
+        res.append(tuple(pattern[j] if j in curr_orbit_indices else 0 for j in range(len(pattern))))
+    return res
 
 
 def find_transition(patternA: list[int], patternB: list[int]) -> list[int]:
@@ -287,6 +309,7 @@ def decompose_siteswap(
 
     res = []
     decompose_siteswap_recursive(pattern, state, res)
+    print(res)
 
     # Count repetitions of patterns
     counter = Counter(res)
@@ -330,9 +353,9 @@ def decompose_siteswap(
 # print(decompose_siteswap([5, 3, 1]))
 # print(decompose_siteswap([3, 5, 3, 1, 4, 2, 3, 5, 3, 1]))
 # print(is_valid([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
-print(decompose_siteswap([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
+# print(decompose_siteswap([ 4, 4, 5, 0, 4, 4, 0, 3, 4, 4, 1, 3, 3, 4, 2]))
 
-print(decompose_siteswap([9, 4, 5, 8, 4], [7]))
+# print(decompose_siteswap([9, 4, 5, 8, 4], [7]))
 
 # print(find_excited_entry([7,8,8,9,0,1,2]))
 # print(decompose_siteswap([7,8,9,5,6]))
@@ -352,6 +375,10 @@ print(decompose_siteswap([9, 4, 5, 8, 4], [7]))
 # print(a)
 # print(find_excited_entry([11,6,1]))
 
-print(decompose_siteswap([8, 9, 5, 6]))
+# print(decompose_siteswap([8, 9, 5, 6]))
 
-print(decompose_siteswap([8, 9, 5,9,5,9,5, 6]))
+# print(decompose_siteswap([8, 9, 5,9,5,9,5, 6]))
+# print(decompose_siteswap([7,8, 9, 5,9,5,9,5, 6,8,9,5,9,5,6]))
+#
+# print(decompose_siteswap([7,8,9,5,6,7,8,9,5,9,5,6]))
+print(calculate_pattern_orbit([9,9,6,8,9,7,8]))

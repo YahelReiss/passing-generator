@@ -10,7 +10,7 @@ from tools import is_valid
 def generate_siteswaps(
     period_length: int,
     num_of_objects: int,
-    partial_pattern: List[Union[int, str]],
+    partial_pattern: List[Union[int, None]],
     min_throw: int = 2,
     max_throw: int = 14,
     exclude_throws: Optional[List[int]] = [1, 3],
@@ -53,8 +53,8 @@ def generate_siteswaps(
 
     generator_indices = [i for i, throw in enumerate(pattern) if throw is None]
 
-    exclude_throws = set(exclude_throws or [])
-    include_throws = set(include_throws or [])
+    exclude_throws_set = set(exclude_throws or [])
+    include_throws_set = set(include_throws or [])
     valid_patterns = []
     fill_pattern(
         pattern,
@@ -63,8 +63,8 @@ def generate_siteswaps(
         num_of_objects,
         min_throw,
         max_throw,
-        exclude_throws,
-        include_throws,
+        exclude_throws_set,
+        include_throws_set,
         generator_indices,
     )
     return deduplicate_patterns(valid_patterns)
@@ -96,7 +96,7 @@ def deduplicate_patterns(patterns: List[List[int]]) -> List[List[int]]:
 
 
 def fill_pattern(
-    pattern: List[Optional[int]],
+    pattern: List[int | None],
     index: int,
     valid_patterns: List[List[int]],
     num_of_objects: int,
@@ -166,37 +166,37 @@ def parse_arguments():
 
     # Add arguments
     parser.add_argument(
-        "--period_length",
+        "--period-length",
         type=int,
         required=True,
         help="Length of the siteswap period.",
     )
     parser.add_argument(
-        "--num_objects",
+        "--num-objects",
         type=int,
         required=True,
         help="Number of objects in the siteswap.",
     )
-    parser.add_argument("--min_throw", type=int, default=2, help="Minimum throw value.")
+    parser.add_argument("--min-throw", type=int, default=2, help="Minimum throw value.")
     parser.add_argument(
         "--max_throw", type=int, default=14, help="Maximum throw value."
     )
     parser.add_argument(
-        "--exclude_throws",
+        "--exclude-throws",
         type=int,
         nargs="*",
         default=[1, 3],
         help="Throws to exclude.",
     )
     parser.add_argument(
-        "--include_throws",
+        "--include-throws",
         type=int,
         nargs="*",
         default=None,
         help="Throws that must appear at least once.",
     )
     parser.add_argument(
-        "--partial_pattern",
+        "--partial-pattern",
         type=int,
         nargs="*",
         default=None,
@@ -214,7 +214,6 @@ def main():
         if args.partial_pattern
         else [None] * args.period_length
     )
-
     result = generate_siteswaps(
         period_length=args.period_length,
         num_of_objects=args.num_objects,

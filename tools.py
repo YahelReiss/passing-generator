@@ -3,7 +3,9 @@ from collections import Counter
 from exceptions import ExcitedSiteswapError, NotValidSiteswapError
 
 
-def is_valid(pattern: list[int] | tuple[int,...], num_of_object: int | None = None) -> bool:
+def is_valid(
+    pattern: list[int] | tuple[int, ...], num_of_object: int | None = None
+) -> bool:
     """
     Check if a pattern is valid based on collision and object count.
 
@@ -22,7 +24,6 @@ def is_valid(pattern: list[int] | tuple[int,...], num_of_object: int | None = No
     if num_of_object and sum(pattern) / period != num_of_object:
         return False
 
-    
     landing = [False] * period  # Tracks where throws land
 
     for index, throw in enumerate(pattern):
@@ -70,6 +71,10 @@ def compute_initial_state_of_pattern(pattern: list[int]) -> list[str]:
     return state
 
 
+def shift_left(state: list[str]) -> list[str]:
+    return state[1:] + ["_"]
+
+
 def shift_state(state: list[str], throw: int) -> list[str]:
     """
     Shift the juggling state to the next step based on the current throw.
@@ -86,7 +91,7 @@ def shift_state(state: list[str], throw: int) -> list[str]:
     Raises:
         ValueError: If there is a ball collision (i.e., trying to throw a ball to an already occupied position).
     """
-    new_state = state[1:] + ["_"]  # Left shift: Remove leftmost, append '_'
+    new_state = shift_left(state)  # Left shift: Remove leftmost, append '_'
 
     if state[0] == "x":  # If an 'x' was removed, we must throw
         if throw == 0:
@@ -116,11 +121,62 @@ def calculate_pattern_orbit(pattern: list[int]) -> list[tuple[int]]:
             indices.add(next_index)
             curr_orbit_indices.append(next_index)
             next_index = (next_index + pattern[next_index]) % len(pattern)
-        res.append(tuple(pattern[j] if j in curr_orbit_indices else 0 for j in range(len(pattern))))
+        res.append(
+            tuple(
+                pattern[j] if j in curr_orbit_indices else 0
+                for j in range(len(pattern))
+            )
+        )
     return res
 
 
-def find_transition(patternA: list[int], patternB: list[int]) -> list[int]:
+def find_all_states(pattern: list[int]) -> set[tuple[str]]:
+    entry = find_excited_entry(pattern) if is_excited_pattern(pattern) else []
+    initial_state = compute_initial_state_of_pattern(pattern)
+    states = set()
+    for throw in entry:
+        initial_state = shift_state(initial_state, throw)
+    states.add(tuple(initial_state))
+    for throw in pattern:
+        initial_state = shift_state(initial_state, throw)
+        states.add(tuple(initial_state))
+
+    return states
+
+
+def find_transition_of_certain_length(
+    state1: list[str], state2: list[str], transitions_length: int
+) -> list[int] | None:
+    result = []
+    if transitions_length == 0 and state1 == state2:
+        return []
+    for _ in range(transitions_length):
+        state1 = shift_left(state1)
+    if not all(b == "x" for a, b in zip(state1, state2) if a == "x"):
+        return None
+
+    extra_count = sum(a != "x" and b == "x" for (a, b) in zip(state1, state2))
+    for i, (a, b) in enumerate(zip(state1, state2)):
+        if a != "x" and b == "x":
+            result.append(i + extra_count)
+            extra_count -= 1
+    return result if result else None
+
+
+def find_minimal_transition_between_two_states(
+    state1: tuple[str], state2: tuple[str]
+) -> list[int] | None:
+    src_state = list(state1)
+    dest_state = list(state2)
+    res = []
+    for i in range(len(state1)):
+        res = find_transition_of_certain_length(src_state, dest_state, i)
+        if res is not None:
+            break
+    return res
+
+
+def find_transition(patternA: list[int], patternB: list[int]) -> list[int] | None:
     """
     Determine the throws needed to safely transition from one pattern to another.
 
@@ -137,33 +193,17 @@ def find_transition(patternA: list[int], patternB: list[int]) -> list[int]:
         patternB
     ), "Patterns must have same ball count"
 
-    max_throw = max(max(patternA), max(patternB))
-    entry = patternA
-    base_entry_length = len(patternA)
-    target_pattern_length = len(patternB)
+    A_states = find_all_states(patternA)
+    B_states = find_all_states(patternB)
 
-    landing_pos = set(
-        patternA[i % base_entry_length] + i + base_entry_length
-        for i in range(num_balls)
-    )
-    full_pattern = (
-        entry
-        + [patternB[i % target_pattern_length] for i in range(num_balls)]
-        + [False] * max_throw
-    )
-    for pos in landing_pos:
-        full_pattern[pos] = True
-
-    first_change_index = None
-    for i, entry_throw in enumerate(entry):
-        if full_pattern[i + entry_throw] is True:
-            if first_change_index is None:
-                first_change_index = i
-            first_free_pos = full_pattern.index(False)
-            full_pattern[i] = first_free_pos - i
-            full_pattern[first_free_pos] = True
-
-    return full_pattern[first_change_index:base_entry_length]
+    minimal_transition = [0] * (num_balls + 1)
+    res = []
+    for stateA in A_states:
+        for stateB in B_states:
+            res = find_minimal_transition_between_two_states(stateA, stateB)
+            if res and len(res) < len(minimal_transition):
+                minimal_transition = res
+    return minimal_transition
 
 
 def find_excited_entry(pattern: list[int]) -> list[int]:
@@ -274,15 +314,24 @@ def decompose_siteswap_recursive(
         if state_tuple in seen_states:
             seen_states = {state_tuple: seen_states[state_tuple]}
             start_index = seen_states[state_tuple] + 1 if not is_seen else 0
-            res.append(tuple(pattern[start_index:local_index+1]))
+            res.append(tuple(pattern[start_index : local_index + 1]))
             if not pattern_prefix_pre_cycle:
                 pattern_prefix_pre_cycle = pattern[:start_index]
-            decompose_siteswap_recursive(pattern[local_index + 1:], current_state, res, True, seen_states, pattern_prefix_pre_cycle)
+            decompose_siteswap_recursive(
+                pattern[local_index + 1 :],
+                current_state,
+                res,
+                True,
+                seen_states,
+                pattern_prefix_pre_cycle,
+            )
             return
         if not is_seen:
             seen_states[state_tuple] = local_index
 
-    res.append(tuple(pattern + pattern_prefix_pre_cycle))  # If no repeats, add the rest of the pattern
+    res.append(
+        tuple(pattern + pattern_prefix_pre_cycle)
+    )  # If no repeats, add the rest of the pattern
 
 
 def decompose_siteswap(
@@ -309,7 +358,6 @@ def decompose_siteswap(
 
     res = []
     decompose_siteswap_recursive(pattern, state, res)
-    print(res)
 
     # Count repetitions of patterns
     counter = Counter(res)
@@ -359,7 +407,7 @@ def decompose_siteswap(
 
 # print(find_excited_entry([7,8,8,9,0,1,2]))
 # print(decompose_siteswap([7,8,9,5,6]))
-# print(find_excited_entry([1,2,3,4,5]))
+# print(find_excited_entry([7,1,4]))
 # print(is_excited_pattern([7,7,1]))
 # num_of_siteswaps = 0
 # last_num = 0
@@ -381,4 +429,13 @@ def decompose_siteswap(
 # print(decompose_siteswap([7,8, 9, 5,9,5,9,5, 6,8,9,5,9,5,6]))
 #
 # print(decompose_siteswap([7,8,9,5,6,7,8,9,5,9,5,6]))
-print(calculate_pattern_orbit([9,9,6,8,9,7,8]))
+# print(calculate_pattern_orbit([9,9,6,8,9,7,8]))
+# print(find_transition_of_certain_length(['x', 'x', 'x', '_', 'x', '_', '_', '_'], ['x', 'x', '_', 'x', 'x', '_', '_', '_'], 1))
+# print(find_excited_entry([7,4,1]))
+# print(find_transition_of_certain_length(['x', 'x', '_', 'x', 'x', '_', '_', '_'], ['x', 'x', 'x', '_', 'x', '_', '_', '_'], 2))
+
+# state = compute_initial_state_of_pattern([7,4,1])
+# for throw in [5]:
+#     state = shift_state(state, throw)
+# print(state)
+print(find_transition([7, 4, 1], [7, 1, 4]))

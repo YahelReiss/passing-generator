@@ -1,6 +1,6 @@
 import pytest
 
-from tools import is_excited_pattern, is_valid, calculate_num_balls
+from tools import calculate_num_balls, is_excited_pattern, is_valid
 
 
 @pytest.mark.parametrize(
@@ -25,6 +25,7 @@ def test_is_valid(pattern, is_pattern_valid):
 )
 def test_is_excited_pattern(pattern, is_excited):
     assert is_excited_pattern(pattern) == is_excited
+
 
 @pytest.mark.parametrize(
     "pattern, num_of_balls",

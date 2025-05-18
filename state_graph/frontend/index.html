@@ -15,7 +15,7 @@
   <h2>State Graph</h2>
   <svg>
     <defs>
-        <marker id="arrow" viewBox="0 -5 10 10" refX="18.5" refY="0"
+        <marker id="arrow" viewBox="0 -5 10 10" refX="23" refY="0"
                 markerWidth="10" markerHeight="10"
                 orient="auto" markerUnits="userSpaceOnUse">
           <path d="M0,-5L10,0L0,5" fill="#999" />
@@ -32,7 +32,7 @@
         const height = window.innerHeight;
 
         const simulation = d3.forceSimulation(graph.nodes)
-          .force("link", d3.forceLink(graph.edges).id(d => d.id).distance(100))
+          .force("link", d3.forceLink(graph.edges).id(d => d.id).distance(200))
           .force("charge", d3.forceManyBody().strength(-300))
           .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -53,12 +53,22 @@
           .attr("fill", "#333");
 
         const node = svg.append("g")
-          .selectAll("circle")
+          .selectAll("g")
           .data(graph.nodes)
           .enter()
-          .append("circle")
-          .attr("r", 10)
+          .append("g")
           .call(drag(simulation));
+
+        node.append("circle")
+          .attr("r", d => 8 + d.id.length * 2)  // Adjust this based on graph size if needed
+          .attr("fill", "steelblue");
+
+        node.append("text")
+          .text(d => d.id)
+          .attr("text-anchor", "middle")
+          .attr("dy", "0.35em")
+          .attr("fill", "white")
+          .style("font-size", "10px");
 
         // const label = svg.append("g")
         //   .selectAll("text")
@@ -76,9 +86,12 @@
             .attr("x2", d => d.target.x)
             .attr("y2", d => d.target.y);
 
+          // node
+          //   .attr("cx", d => d.x)
+          //   .attr("cy", d => d.y);
+
           node
-            .attr("cx", d => d.x)
-            .attr("cy", d => d.y);
+            .attr("transform", d => `translate(${d.x},${d.y})`);
 
         //   label
         //     .attr("x", d => d.x)

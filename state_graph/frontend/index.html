@@ -13,6 +13,11 @@
 </head>
 <body>
   <h2>State Graph</h2>
+  <div style="position: absolute; top: 40px; left: 20px; background: #f8f8f8; padding: 10px; border-radius: 8px; box-shadow: 0 0 5px #aaa;">
+    <label>Number of balls: <input type="number" id="numBalls" value="3" min="1" style="width: 50px;"></label><br>
+    <label>Max throw: <input type="number" id="maxThrow" value="6" min="1" style="width: 50px;"></label><br>
+    <button id="generateBtn">Generate</button>
+  </div>
   <svg>
     <defs>
         <marker id="arrow" viewBox="0 -5 10 10" refX="23" refY="0"
@@ -24,7 +29,7 @@
   </svg>
 
   <script>
-    fetch("http://127.0.0.1:8000/graph?num_balls=3&max_throw=7")
+    fetch("http://127.0.0.1:8000/graph?num_balls=3&max_throw=6")
       .then(res => res.json())
       .then(graph => {
         const svg = d3.select("svg");
@@ -32,7 +37,7 @@
         const height = window.innerHeight;
 
         const simulation = d3.forceSimulation(graph.nodes)
-          .force("link", d3.forceLink(graph.edges).id(d => d.id).distance(200))
+          .force("link", d3.forceLink(graph.edges).id(d => d.id).distance(150))
           .force("charge", d3.forceManyBody().strength(-300))
           .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -66,6 +71,13 @@
           .attr("r", d => 8 + d.id.length * 2)  // Adjust this based on graph size if needed
           .attr("fill", "steelblue");
 
+        node.filter(d => d.id === "xxx--")  // Replace "000" with your actual ground state logic
+          .append("circle")
+          .attr("r", d => 9 + d.id.length * 2)  // slightly larger than main circle
+          .attr("fill", "none")
+          .attr("stroke", "red")
+          .attr("stroke-width", 2);
+
         node.append("text")
           .text(d => d.id)
           .attr("text-anchor", "middle")
@@ -81,6 +93,30 @@
         //   .text(d => d.id)
         //   .attr("dx", 12)
         //   .attr("dy", ".35em");
+
+      node.on("click", (event, clickedNode) => {
+        const connected = new Set();
+        graph.edges.forEach(edge => {
+          if (edge.source.id === clickedNode.id) connected.add(edge.target.id);
+          if (edge.target.id === clickedNode.id) connected.add(edge.source.id);
+        });
+
+      simulation.force("charge", d3.forceManyBody().strength(d => {
+        return connected.has(d.id) || d.id === clickedNode.id ? -1 : -600;
+      }));
+
+      simulation.force("link").distance(d => {
+        return (d.source.id === clickedNode.id || d.target.id === clickedNode.id) ? 150 : 200;
+      });
+
+      simulation.alpha(1).restart();
+
+  //     setTimeout(() => {
+  //   simulation.force("charge", d3.forceManyBody().strength(-300));
+  //   simulation.force("link").distance(150);
+  //   simulation.alpha(0.8).restart();
+  // }, 3000);
+});
 
         simulation.on("tick", () => {
           link.attr("d", d => {

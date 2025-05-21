@@ -6,7 +6,6 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     svg { width: 100vw; height: 100vh; }
-    circle { fill: steelblue; }
     line { stroke: #999; stroke-width: 2px; }
     text { font: 12px sans-serif; pointer-events: none; }
   </style>
@@ -90,22 +89,74 @@
             .attr("fill", "white")
             .style("font-size", "10px");
 
+          function clearHighlights() {
+            d3.selectAll("circle").attr("fill", "steelblue");
+            d3.selectAll("path").attr("stroke", "#999").attr("stroke-width", 2);
+          }
+
           node.on("click", (event, clickedNode) => {
-            const connected = new Set();
+            event.stopPropagation();
+
+            clearHighlights();
+
+            const incoming = new Set();
+            const outgoing = new Set();
+
             graph.edges.forEach(edge => {
-              if (edge.source.id === clickedNode.id) connected.add(edge.target.id);
-              if (edge.target.id === clickedNode.id) connected.add(edge.source.id);
+              if (edge.source.id === clickedNode.id) {
+                outgoing.add(edge.target.id);
+              }
+              if (edge.target.id === clickedNode.id) {
+                incoming.add(edge.source.id);
+              }
             });
 
+            node.selectAll("circle")
+              .attr("fill", d => {
+                if (d.id === clickedNode.id) return "gold";
+                if (incoming.has(d.id)) return "lightcoral";
+                if (outgoing.has(d.id)) return "lightgreen";
+                return "steelblue";
+              });
+
+
+            link
+            .attr("stroke", d => {
+              if (d.source.id === clickedNode.id) return "lightgreen";
+              if (d.target.id === clickedNode.id) return "lightcoral";
+              return "#999";
+            })
+            .attr("stroke-width", d =>
+              d.source.id === clickedNode.id || d.target.id === clickedNode.id ? 3 : 2
+            );
+
+            // const connected = new Set();
+            // graph.edges.forEach(edge => {
+            //   if (edge.source.id === clickedNode.id) connected.add(edge.target.id);
+            //   if (edge.target.id === clickedNode.id) connected.add(edge.source.id);
+            // });
+
+            // simulation.force("charge", d3.forceManyBody().strength(d =>
+            //   connected.has(d.id) || d.id === clickedNode.id ? -50 : -600
+            // ));
+
+            // simulation.force("link").distance(d =>
+            //   (d.source.id === clickedNode.id || d.target.id === clickedNode.id) ? 100 : 150
+            // );
+
             simulation.force("charge", d3.forceManyBody().strength(d =>
-              connected.has(d.id) || d.id === clickedNode.id ? -50 : -600
+              incoming.has(d.id) || outgoing.has(d.id) || d.id === clickedNode.id ? -50 : -600
             ));
 
             simulation.force("link").distance(d =>
-              (d.source.id === clickedNode.id || d.target.id === clickedNode.id) ? 100 : 150
+              d.source.id === clickedNode.id || d.target.id === clickedNode.id ? 100 : 150
             );
 
             simulation.alpha(1).restart();
+          });
+
+          d3.select("svg").on("click", () => {
+            clearHighlights();
           });
 
           simulation.on("tick", () => {

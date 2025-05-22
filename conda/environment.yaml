@@ -23,6 +23,7 @@ dependencies:
   - ipython
 
   # Web Development
+  - fastapi
   - flask
   - flask-cors
 

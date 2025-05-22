@@ -12,6 +12,9 @@ def build_graph(num_balls: int, max_throw: int) -> Dict:
             return tuple(new_state)
         return None  # invalid throw
 
+    if num_balls > max_throw:
+        return {}
+
     ground_state = tuple(["x"] * num_balls + ["-"] * (max_throw - num_balls))
     visited = {}
     queue = deque([ground_state])
